@@ -1,0 +1,37 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Python caches and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Type checkers and test caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Generated benchmark output
+benchmark_results.csv
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
