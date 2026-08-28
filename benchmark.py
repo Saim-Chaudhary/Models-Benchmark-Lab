@@ -1,54 +1,77 @@
 # benchmark.py
-# This file contains the logic for testing ONE model.
+# Calls a model (possibly multiple times) and returns a full benchmark result.
 
 from langchain.chat_models import init_chat_model
 import time
 
+from text_utils import split_reasoning_and_answer, estimate_token_split
+from cost import calculate_cost
 
-def run_model(model_name, question, api_key, provider):
-    """
-    This function:
-    1. Connects to a model using the given provider
-    2. Sends the question
-    3. Times how long it takes
-    4. Gets token usage
-    5. Returns everything as a dictionary
-    """
 
-    # Step 1: Create the model connection using the chosen provider
-    model = init_chat_model(
-        model_name,
-        model_provider=provider,
-        api_key=api_key
-    )
+def call_model_once(model_name, question, api_key, provider):
+    """Sends ONE question to ONE model, ONE time. No averaging here."""
 
-    # Step 2: Record time before sending the question
+    model = init_chat_model(model_name, model_provider=provider, api_key=api_key)
+
     start_time = time.time()
-
-    # Step 3: Ask the question
     response = model.invoke(question)
-
-    # Step 4: Record time after getting the response
     end_time = time.time()
 
-    # Step 5: Calculate time taken
-    time_taken = end_time - start_time
-
-    # Step 6: Get token usage (if available)
     usage = response.usage_metadata
-    input_tokens = usage["input_tokens"]
-    output_tokens = usage["output_tokens"]
-    total_tokens = usage["total_tokens"]
 
-    # Step 7: Put everything into a dictionary
-    result = {
-        "model": model_name,
-        "question": question,
-        "answer": response.content,
-        "time_taken_seconds": round(time_taken, 2),
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "total_tokens": total_tokens
+    return {
+        "raw_answer": response.content,
+        "time_taken_seconds": end_time - start_time,
+        "input_tokens": usage["input_tokens"],
+        "output_tokens": usage["output_tokens"],
+        "total_tokens": usage["total_tokens"],
     }
 
-    return result
+
+def run_model(model_name, question, api_key, provider, num_runs=1, pricing_table=None):
+    """
+    Runs a model against a question 'num_runs' times, averages the results,
+    and enriches them with tokens/sec, cost, and reasoning/answer separation.
+
+    pricing_table is optional and comes from the user (see cost.py) —
+    we never hardcode prices, since they vary by provider and change over time.
+    """
+
+    if pricing_table is None:
+        pricing_table = {}
+
+    run_records = [call_model_once(model_name, question, api_key, provider) for _ in range(num_runs)]
+
+    avg_time = sum(r["time_taken_seconds"] for r in run_records) / num_runs
+    avg_input_tokens = sum(r["input_tokens"] for r in run_records) / num_runs
+    avg_output_tokens = sum(r["output_tokens"] for r in run_records) / num_runs
+    avg_total_tokens = sum(r["total_tokens"] for r in run_records) / num_runs
+
+    # Use the last run's actual text to show the user
+    last_answer_raw = run_records[-1]["raw_answer"]
+    split_result = split_reasoning_and_answer(last_answer_raw)
+
+    reasoning_tokens_est, answer_tokens_est = estimate_token_split(
+        split_result["reasoning"], split_result["answer"], avg_output_tokens
+    )
+
+    tokens_per_second = round(avg_output_tokens / avg_time, 2) if avg_time > 0 else 0
+    cost_usd = calculate_cost(model_name, avg_input_tokens, avg_output_tokens, pricing_table)
+
+    return {
+        "model": model_name,
+        "question": question,
+        "answer": split_result["answer"],
+        "reasoning": split_result["reasoning"],
+        "has_reasoning": split_result["has_reasoning"],
+        "time_taken_seconds": round(avg_time, 2),
+        "input_tokens": round(avg_input_tokens),
+        "output_tokens": round(avg_output_tokens),
+        "total_tokens": round(avg_total_tokens),
+        "reasoning_tokens_est": reasoning_tokens_est,
+        "answer_tokens_est": answer_tokens_est,
+        "tokens_per_second": tokens_per_second,
+        "cost_usd": cost_usd,
+        "num_runs": num_runs,
+        "error": False,
+    }

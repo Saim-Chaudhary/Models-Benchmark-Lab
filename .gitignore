@@ -1,37 +1,36 @@
-# Environment and secrets
+# Environment variables / secrets
 .env
 .env.*
 !.env.example
 
-# Virtual environments
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+
+# uv / virtual environments
 .venv/
 venv/
 env/
 
-# Python caches and compiled files
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Type checkers and test caches
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-
-# Build and packaging output
-build/
-dist/
-*.egg-info/
-.eggs/
-
 # Streamlit
 .streamlit/secrets.toml
 
-# Generated benchmark output
+# Project-generated data (safe to regenerate, shouldn't be committed)
 benchmark_results.csv
+benchmark_history.json
 
-# Editor and OS files
-.vscode/
-.idea/
+# OS-specific junk files
 .DS_Store
 Thumbs.db
+
+# Editor/IDE settings
+.vscode/
+.idea/
+*.swp
+
+# uv lock file note:
+# uv.lock IS generally recommended to commit for reproducible installs,
+# so it is intentionally NOT ignored here.
