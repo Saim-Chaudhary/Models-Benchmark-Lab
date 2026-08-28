@@ -37,7 +37,6 @@ It works with **any provider LangChain supports** (Groq, OpenAI, Anthropic, Goog
 
 ## Screenshot
 
-*(Add a screenshot of the app here — drag an image into this section on GitHub, or reference a local file.)*
 
 ```
 ![App screenshot](docs/screenshot.png)
